@@ -6,58 +6,81 @@ public class Player : MonoBehaviour
 {
     #region variables
 
+    [Header("Player")]
     [SerializeField] private GameObject player;
+
     [SerializeField] private Transform playerTransform;
+    [SerializeField] private Transform groundCheck;
+
     [SerializeField] private Camera playerCamera;
     [SerializeField] private CharacterController controller;
-    [SerializeField] private Transform groundCheck;
-    [SerializeField] private float groundDistance;
     [SerializeField] private LayerMask groundMask;
 
-    [SerializeField] private GameObject lightObject;
-    [SerializeField] private Rigidbody lightRB;
-    [SerializeField] private float lightSpeed;
-    [SerializeField] private GameObject baseLightPos;
-    [SerializeField] private float maxLightDistance;
-    private Vector3 lightDirection;
-
-    [SerializeField] private LayerMask mask;
-    private Ray ray;
-    private RaycastHit hit;
-    private Vector3 center = new Vector3(0.5f, 0.5f, 0);
-
-
-    #region camera variables
-
-    [SerializeField] private float mouseSensitivity;
-    private float mouseX;
-    private float mouseY;
-    private float xRotation = 0f;
-
-    #endregion
-
-    #region character movements variables
-
+    [SerializeField] private float groundDistance;
     [SerializeField] private float gravity;
     [SerializeField] private float speed;
     [SerializeField] private float jumpHeight;
-    private float xMovement;
-    private float zMovement;
+
+    private float xMovement, zMovement;
     private Vector3 move, velocity;
     private bool isGrounded;
 
-    #endregion
+
+    [Header("Light")]
+    [SerializeField] private GameObject lightObject;
+
+    [SerializeField] private Rigidbody lightRB;
+
+    [SerializeField] private Renderer lightRenderer;    
+
+    [SerializeField] private float lightSpeed;
+    [SerializeField] private float maxLightDistance;
+    [SerializeField] private float baseDistanceToCam;
+    [SerializeField] private float toCenterSpeed;
+
+    private Vector3 lightMovement;
+
+
+    [Header("Camera")]
+
+    [SerializeField] private float mouseSensitivity;
+    [SerializeField] private float lightSensitivity;
+    private float mouseX, mouseY, mouseZ, xRotation;
+
+    private Vector3 center, screenCenter;
 
     #endregion
 
 
     void Start()
     {
-
+        center = new Vector3(0.5f, 0.5f, baseDistanceToCam);
+        screenCenter = playerCamera.ViewportToWorldPoint(center);
+        lightObject.transform.position = playerCamera.ScreenToWorldPoint(new Vector3(Screen.width / 2, Screen.height / 2, baseDistanceToCam));
     }
 
     void Update()
     {
+        lightObject.transform.eulerAngles = playerCamera.transform.eulerAngles;
+        Debug.Log(lightRenderer.isVisible);
+
+        if(Input.GetMouseButton(0) && lightRenderer.isVisible)
+        {
+            LightControl();
+        }
+        else
+        {
+            CameraMovements();
+            if(Input.GetMouseButton(1))
+            {
+                LightToCenter(toCenterSpeed);
+            }
+        }
+
+        if (!lightRenderer.isVisible)
+        {
+            LightToCenter(toCenterSpeed * 2);
+        }
 
         if(Input.GetButtonDown("Jump") && isGrounded)
             velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
@@ -68,16 +91,14 @@ public class Player : MonoBehaviour
             velocity.y = -2f;
 
         if(Input.GetKeyDown(KeyCode.R))
-            lightObject.transform.position = baseLightPos.transform.position;
+            lightObject.transform.position = playerCamera.ScreenToWorldPoint(new Vector3(Screen.width / 2, Screen.height / 2, baseDistanceToCam));
     }
 
     private void FixedUpdate()
     {
         if(GameManager.Instance.gameState == GameManager.GameState.InGame)
         {
-            CameraMovements();
             PlayerMovements();
-            LightControl();
         }
     }
 
@@ -114,28 +135,21 @@ public class Player : MonoBehaviour
 
     private void LightControl()
     {
-        lightRB.velocity = Vector3.zero;
+        mouseX = Input.GetAxis("Mouse X") * lightSensitivity * Time.deltaTime;
+        mouseY = Input.GetAxis("Mouse Y") * lightSensitivity * Time.deltaTime;
+        mouseZ = Input.mouseScrollDelta.y * mouseSensitivity * Time.deltaTime;
 
-        if(Input.GetKey(KeyCode.Mouse0) && Vector3.Distance(this.transform.position, lightObject.transform.position) < maxLightDistance)
-        {
-            ray = Camera.main.ViewportPointToRay(center);
+        lightMovement.x = mouseX;
+        lightMovement.y = mouseY;
+        lightMovement.z = mouseZ;
 
-            if(Physics.Raycast(ray, out hit, 10000, ~mask))
-                MoveLightToPoint(hit.point);
-        }
-
-        if(Input.GetKey(KeyCode.Mouse1) && lightObject.transform.position != baseLightPos.transform.position)
-        {
-            MoveLightToPoint(baseLightPos.transform.position);
-        }
-
+        lightObject.transform.Translate(lightMovement, relativeTo: Space.Self);
     }
 
-    private void MoveLightToPoint(Vector3 direction)
+    private void LightToCenter(float speed)
     {
-
-        lightDirection = (direction - lightObject.transform.position).normalized * lightSpeed;
-        lightRB.velocity = lightDirection;
+        screenCenter = playerCamera.ViewportToWorldPoint(center);
+        lightObject.transform.position = Vector3.MoveTowards(lightObject.transform.position, screenCenter, speed * Time.deltaTime);
     }
 
     public void Death()
