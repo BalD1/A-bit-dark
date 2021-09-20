@@ -27,59 +27,28 @@ public class Player : MonoBehaviour
 
 
     [Header("Light")]
-    [SerializeField] private GameObject lightObject;
-
-    [SerializeField] private Rigidbody lightRB;
-
-    [SerializeField] private Renderer lightRenderer;    
-
-    [SerializeField] private float lightSpeed;
-    [SerializeField] private float maxLightDistance;
-    [SerializeField] private float baseDistanceToCam;
-    [SerializeField] private float toCenterSpeed;
-
-    private Vector3 lightMovement;
+    [SerializeField] private LightOrb lightOrb;
+    [SerializeField] private GameObject lightAttachPoint;
+    public GameObject LightAttachPoint { get => lightAttachPoint; }
 
 
     [Header("Camera")]
-
     [SerializeField] private float mouseSensitivity;
-    [SerializeField] private float lightSensitivity;
-    private float mouseX, mouseY, mouseZ, xRotation;
-
-    private Vector3 center, screenCenter;
+    private float mouseX, mouseY, xRotation;
 
     #endregion
 
 
     void Start()
     {
-        center = new Vector3(0.5f, 0.5f, baseDistanceToCam);
-        screenCenter = playerCamera.ViewportToWorldPoint(center);
-        lightObject.transform.position = playerCamera.ScreenToWorldPoint(new Vector3(Screen.width / 2, Screen.height / 2, baseDistanceToCam));
+
     }
 
     void Update()
     {
-        lightObject.transform.eulerAngles = playerCamera.transform.eulerAngles;
-        Debug.Log(lightRenderer.isVisible);
-
-        if(Input.GetMouseButton(0) && lightRenderer.isVisible)
-        {
-            LightControl();
-        }
-        else
+        if(!(Input.GetMouseButton(0) && lightOrb.MovableSphereRenderer.isVisible))
         {
             CameraMovements();
-            if(Input.GetMouseButton(1))
-            {
-                LightToCenter(toCenterSpeed);
-            }
-        }
-
-        if (!lightRenderer.isVisible)
-        {
-            LightToCenter(toCenterSpeed * 2);
         }
 
         if(Input.GetButtonDown("Jump") && isGrounded)
@@ -89,9 +58,6 @@ public class Player : MonoBehaviour
 
         if(isGrounded && velocity.y < 0)
             velocity.y = -2f;
-
-        if(Input.GetKeyDown(KeyCode.R))
-            lightObject.transform.position = playerCamera.ScreenToWorldPoint(new Vector3(Screen.width / 2, Screen.height / 2, baseDistanceToCam));
     }
 
     private void FixedUpdate()
@@ -132,25 +98,6 @@ public class Player : MonoBehaviour
     }
 
     #endregion
-
-    private void LightControl()
-    {
-        mouseX = Input.GetAxis("Mouse X") * lightSensitivity * Time.deltaTime;
-        mouseY = Input.GetAxis("Mouse Y") * lightSensitivity * Time.deltaTime;
-        mouseZ = Input.mouseScrollDelta.y * mouseSensitivity * Time.deltaTime;
-
-        lightMovement.x = mouseX;
-        lightMovement.y = mouseY;
-        lightMovement.z = mouseZ;
-
-        lightObject.transform.Translate(lightMovement, relativeTo: Space.Self);
-    }
-
-    private void LightToCenter(float speed)
-    {
-        screenCenter = playerCamera.ViewportToWorldPoint(center);
-        lightObject.transform.position = Vector3.MoveTowards(lightObject.transform.position, screenCenter, speed * Time.deltaTime);
-    }
 
     public void Death()
     {
